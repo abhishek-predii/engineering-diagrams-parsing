@@ -46,6 +46,11 @@ Make sure chandra is running on a port using:
 vllm serve datalab-to/chandra --served-model-name chandra --max-model-len 16384 --port 8000
 ```
 
+If your vLLM server is not on the default port, set `VLLM_API_BASE` before running the pipeline (this is what `chandra --method vllm` reads). Eg:
+```
+export VLLM_API_BASE="http://127.0.0.1:9001/v1"
+```
+
 To run steps 1-4:
 ```
 python3 run_pipeline.py <path to PDF> --output-dir march30 --extract-pages --run-chandra --chandra-method vllm
