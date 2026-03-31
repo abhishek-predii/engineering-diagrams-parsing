@@ -24,8 +24,8 @@ You generate (per manual):
 - `ExtractImages/data/results/<pdf_id>/figures_tables_pages.json`
 - `ExtractImages/data/results/<pdf_id>/figures/page_<N>.png`
 - `ExtractImages/data/results/<pdf_id>/tables/page_<N>.png`
-- `ExtractImages/data/results/<pdf_id>/table_data_vllm/page_<N>/page_<N>.html` (and `.md`)
-- `ExtractImages/data/results/<pdf_id>/table_data_vllm/page_<N>/page_<N>.csv`
+- `ExtractImages/data/results/<pdf_id>/table_data/page_<N>/page_<N>.html` (and `.md`)
+- `ExtractImages/data/results/<pdf_id>/table_data/page_<N>/page_<N>.csv`
 - `ExtractImages/data/results/<pdf_id>/dataset_manifest_vllm.tsv`
 
 And optionally one global manifest:
@@ -38,6 +38,18 @@ See `ExtractImages/data/README.md` for the detailed directory layout.
 ---
 
 ## 2. Step-by-step pipeline
+
+NOTE: 
+
+Make sure chandra is running on a port using: 
+```
+vllm serve datalab-to/chandra --served-model-name chandra --max-model-len 16384 --port 8000
+```
+
+To run steps 1-4:
+```
+python3 run_pipeline.py <path to PDF> --output-dir march30 --extract-pages --run-chandra --chandra-method vllm
+```
 
 ### Step 1–2: Unstructured metadata -> figure/table page mapping
 
@@ -81,7 +93,7 @@ Outputs:
 
 ### Step 4: Run Chandra OCR over tables
 
-You can run Chandra per PDF with `run_pipeline.py --run-chandra`, but for bulk processing `run_chandra_batch.py` is recommended.
+You can run Chandra per PDF with `run_pipeline.py --run-chandra --chandra-method vllm`, but for bulk processing `run_chandra_batch.py` is recommended.
 
 Batch runner:
 
@@ -91,7 +103,7 @@ cd /home/prahitha.movva03/engineering-diagrams-parsing/ExtractImages
 python3 run_chandra_batch.py \
   --base-dir /home/prahitha.movva03/engineering-diagrams-parsing/ExtractImages/data/results \
   --method vllm \
-  --output-subdir table_data_vllm
+  --output-subdir table_data
 ```
 
 Behavior:
@@ -99,7 +111,7 @@ Behavior:
 - It finds each `data/results/<pdf_id>/tables/` directory that contains PNGs.
 - It runs:
   - `chandra <tables_dir> <result_dir>/<output-subdir> --method <method>`
-- Default output subdir is `table_data_vllm` to avoid overwriting previous runs.
+- Default output subdir is `table_data` to avoid overwriting previous runs.
 
 Practical note (from your experience):
 
@@ -112,13 +124,13 @@ Practical note (from your experience):
 Convert HTML tables to per-page CSV:
 
 ```bash
-python3 html_tables_to_csv.py data/results/<pdf_id>/table_data_vllm
+python3 html_tables_to_csv.py data/results/<pdf_id>/table_data
 ```
 
 Create per-PDF dataset manifest linking figure images to table CSVs:
 
 ```bash
-python3 html_tables_to_csv.py data/results/<pdf_id>/table_data_vllm \
+python3 html_tables_to_csv.py data/results/<pdf_id>/table_data \
   --merged data/results/<pdf_id>/dataset_manifest_vllm.tsv
 ```
 
