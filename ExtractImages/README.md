@@ -151,38 +151,23 @@ The CSVs are written with **consistent normalized headers** (`column_0`, `column
 
 ## 3. Create a global manifest
 
-If you already generated per-PDF `dataset_manifest_vllm.tsv` files, concatenate them and add a `pdf_id`.
-
-Run from `ExtractImages/`:
+If you already generated per-PDF `dataset_manifest_vllm.tsv` files, use `create_global_manifest.py` to combine them into a single TSV with relativized paths and a `pdf_id` column.
 
 ```bash
-cd ExtractImages
-
-python3 - << 'PY'
-import os
-import pandas as pd
-
-base = "data/results"
-manifests = []
-for name in sorted(os.listdir(base)):
-    d = os.path.join(base, name)
-    if not os.path.isdir(d):
-        continue
-    mf = os.path.join(d, "dataset_manifest_vllm.tsv")
-    if not os.path.isfile(mf):
-        continue
-    df = pd.read_csv(mf, sep="\t", dtype=str)
-    df["pdf_id"] = name
-    manifests.append(df)
-
-global_df = pd.concat(manifests, ignore_index=True)
-out = os.path.join(base, "dataset_manifest_global_vllm.tsv")
-global_df.to_csv(out, sep="\t", index=False)
-print("Wrote", out, "rows=", len(global_df))
-PY
+python3 create_global_manifest.py <results_dir>
 ```
 
-If you want a version with absolute prefixes removed, you can create a “rel” manifest as you already did.
+Options:
+
+- `--output` / `-o` — output TSV path (default: `<results_dir>/dataset_manifest_global_vllm.tsv`)
+- `--threshold` / `-t` — max CSV rows per figure to include (default: `5`); figures mapped to more tables than this are dropped
+- `--manifest-name` — per-PDF manifest filename to look for (default: `dataset_manifest_vllm.tsv`)
+
+Example with custom threshold:
+
+```bash
+python3 create_global_manifest.py /data/results --threshold 5
+```
 
 ---
 

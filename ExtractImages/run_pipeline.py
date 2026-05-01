@@ -24,6 +24,9 @@ import argparse
 import os
 import sys
 
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True  # tolerate PDFs with partially-embedded images
+
 # Run from ExtractImages or repo root
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if _SCRIPT_DIR not in sys.path:

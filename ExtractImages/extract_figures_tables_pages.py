@@ -18,7 +18,7 @@ import os
 import re
 import sys
 
-FIGURE_TEXT_RE = re.compile(r"^Figure\s+(\d+)\s*[.\s]", re.IGNORECASE)
+FIGURE_TEXT_RE = re.compile(r"^(?:Figure|FIG\.?)\s*(\d+)\s*[.\s]", re.IGNORECASE)
 
 
 def extract_figures_tables_pages(metadata_path, output_path=None):
