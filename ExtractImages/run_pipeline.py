@@ -110,17 +110,6 @@ def main():
         help="Path to config.yaml for Claude extraction (default: config.yaml next to this script)",
     )
     parser.add_argument(
-        "--run-chandra",
-        action="store_true",
-        help="[LEGACY] Run chandra OCR on tables/ -> table_data/ (HTML output). Use --run-claude instead.",
-    )
-    parser.add_argument(
-        "--chandra-method",
-        choices=("hf", "vllm"),
-        default="hf",
-        help="[LEGACY] Chandra method (default: hf). Only used with --run-chandra.",
-    )
-    parser.add_argument(
         "--pdf",
         help="PDF path (required for --extract-pages when using --from-metadata)",
     )
@@ -156,16 +145,6 @@ def main():
                 print("\nStep: Extracting figure/table page images...")
                 from page_images import extract_figure_table_images
                 extract_figure_table_images(pdf_path, result_dir)
-        if args.run_chandra:
-            print("Warning: --run-chandra is legacy. Use --run-claude instead.", file=sys.stderr)
-            tables_dir = os.path.join(result_dir, "tables")
-            table_data_dir = os.path.join(result_dir, "table_data")
-            if not os.path.isdir(tables_dir):
-                print("Error: tables/ not found. Run with --extract-pages first.", file=sys.stderr)
-                sys.exit(1)
-            print("\nStep: Running chandra OCR on tables/ (legacy)...")
-            from page_images import run_chandra_ocr
-            run_chandra_ocr(tables_dir, table_data_dir, method=args.chandra_method)
         if args.run_claude:
             tables_dir = os.path.join(result_dir, "tables")
             table_data_dir = os.path.join(result_dir, "table_data")
@@ -238,16 +217,6 @@ def main():
             extract_figure_table_images(pdf_path, result_dir)
 
     # Step 4 (optional): Claude extraction on tables/
-    if args.run_chandra:
-        print("Warning: --run-chandra is legacy. Use --run-claude instead.", file=sys.stderr)
-        tables_dir = os.path.join(result_dir, "tables")
-        table_data_dir = os.path.join(result_dir, "table_data")
-        if not os.path.isdir(tables_dir):
-            print("Error: tables/ not found. Run with --extract-pages first.", file=sys.stderr)
-            sys.exit(1)
-        print("\nStep 4: Running chandra OCR on tables/ (legacy)...")
-        from page_images import run_chandra_ocr
-        run_chandra_ocr(tables_dir, table_data_dir, method=args.chandra_method)
     if args.run_claude:
         tables_dir = os.path.join(result_dir, "tables")
         table_data_dir = os.path.join(result_dir, "table_data")

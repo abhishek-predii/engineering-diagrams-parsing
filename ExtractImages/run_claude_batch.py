@@ -2,9 +2,7 @@
 """
 Batch-run Claude table extraction over all data-N result folders.
 
-This replaces run_chandra_batch.py. Instead of calling the chandra OCR CLI
-(which produced HTML files requiring a second html_tables_to_csv.py pass),
-this script calls Claude directly and writes flat TSV files that
+Calls Claude directly on each table PNG and writes flat TSV files that
 create_local_manifest.py can consume immediately.
 
 TSVs are written to:

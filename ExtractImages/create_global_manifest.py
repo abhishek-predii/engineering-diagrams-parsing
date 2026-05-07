@@ -46,7 +46,7 @@ def relativize(path_str: str, pdf_id: str) -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Combine per-PDF dataset_manifest_vllm.tsv files into a global manifest"
+        description="Combine per-PDF dataset_manifest_local.tsv files into a global manifest"
     )
     parser.add_argument(
         "base",
@@ -54,7 +54,7 @@ def main():
     )
     parser.add_argument(
         "--output", "-o",
-        help="Output TSV path (default: <base>/dataset_manifest_global_vllm.tsv)",
+        help="Output TSV path (default: <base>/dataset_manifest_global.tsv)",
     )
     parser.add_argument(
         "--manifest-name",
