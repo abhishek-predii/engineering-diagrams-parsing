@@ -119,48 +119,16 @@ python3 run_claude_batch.py \
   --overwrite          # re-run images that already have a TSV
 ```
 
-**Option C — extract_tables.py directly (standalone, output to a separate dir):**
+### Step 5: Post-processing, validation, and manifest construction
 
-```bash
-python3 extract_tables.py --datasets data-7 data-8
-python3 extract_tables.py --datasets "*"               # all datasets
-python3 extract_tables.py --output-dir /tmp/tsv_out    # separate output dir
-```
+Each TSV undergoes structural cleaning: near-empty columns are dropped and adjacent duplicate columns are merged. A TSV is accepted only if it retains both `item_no` and `description` columns with at least one data row, excluding non-parts-list pages. Figures linked to more than `--threshold` table pages are dropped (default: 5).
 
-**Configuring the model/provider (`config.yaml`):**
-
-```yaml
-# Switch between providers by changing this line:
-provider: anthropic          # native Anthropic API  (ANTHROPIC_API_KEY)
-# provider: claude_azure     # Azure AI Foundry Claude (SUBSCRIPTION_KEY)
-# provider: azure_openai     # Azure AI Foundry GPT-4o (SUBSCRIPTION_KEY)
-
-anthropic:
-  model: claude-opus-4-5
-  max_tokens: 8192
-
-pipeline:
-  results_dir: ./data/results
-  output_subdir: table_data   # TSVs land at results_dir/<dataset>/table_data/page_N.tsv
-  skip_existing: true
-```
-
-### Step 5: Build per-PDF local manifest from TSVs
-
-This step validates the flat `table_data/page_<N>.tsv` files and links them to figure images via `figures_tables_pages.json`.
-
-Each TSV must have an `item_no` and a `description` column to be included; non-parts-list pages (index pages, etc.) are automatically skipped.
-
-The threshold filter is applied here: figures paired with more than `--threshold` TSV files are dropped before writing the local manifest.
+**Build per-PDF local manifest:**
 
 ```bash
 python3 create_local_manifest.py data/results/<pdf_id>/table_data
 python3 create_local_manifest.py data/results/<pdf_id>/table_data --threshold 3
 ```
-
-Options:
-
-- `--threshold` / `-t` — max TSV files per figure to include (default: `5`). Figures with more mappings are dropped.
 
 Output — `data/results/<pdf_id>/dataset_manifest_local.tsv`:
 
@@ -171,14 +139,10 @@ Output — `data/results/<pdf_id>/dataset_manifest_local.tsv`:
 | `tsv_path` | relative path to the table TSV (`table_data/page_<N>.tsv`) |
 | `figure` | figure key from `figures_tables_pages.json` |
 
----
-
-## 3. Create a global manifest
-
-Once per-PDF `dataset_manifest_local.tsv` files exist, combine them into a single TSV:
+**Merge into a global manifest:**
 
 ```bash
-python3 create_global_manifest.py <results_dir>
+python3 create_global_manifest.py data/results
 ```
 
 Options:
@@ -186,25 +150,9 @@ Options:
 - `--output` / `-o` — output TSV path (default: `<results_dir>/dataset_manifest_global.tsv`)
 - `--manifest-name` — per-PDF manifest filename (default: `dataset_manifest_local.tsv`)
 
-Example:
-
-```bash
-python3 create_global_manifest.py data/results
-```
-
 ---
 
-## 4. What to use for "upload figure image, extract components, compare to table"
-
-Use the global (or per-PDF) dataset manifest:
-
-- Load the figure image from `figure_path`
-- Load ground-truth components from `tsv_path`
-- Compare model output to the TSV rows/columns for that table page
-
----
-
-## 5. Key scripts summary
+## 3. Key scripts summary
 
 | Script | Role |
 |--------|------|
@@ -217,15 +165,3 @@ Use the global (or per-PDF) dataset manifest:
 | `create_local_manifest.py` | Validate TSVs in `table_data/` + build per-PDF `dataset_manifest_local.tsv` |
 | `create_global_manifest.py` | Combine per-PDF local manifests into `dataset_manifest_global.tsv` |
 
----
-
-## 6. Legacy scripts (kept for reference)
-
-These scripts were part of the old Chandra OCR pipeline and are no longer needed:
-
-| Script | Description |
-|--------|-------------|
-| `run_chandra_batch.py` | Batch-ran Chandra OCR CLI → HTML files per table image |
-| `html_tables_to_csv.py` | Converted Chandra HTML output → normalized CSV/TSV |
-
-`--run-chandra` still works in `run_pipeline.py` but prints a deprecation warning.
