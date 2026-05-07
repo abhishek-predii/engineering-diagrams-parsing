@@ -12,13 +12,13 @@ anthropic:
   max_tokens: 8192
 
 claude_azure:
-  endpoint: https://prediillm2.openai.azure.com/anthropic
+  endpoint: https://<your-azure-endpoint>/anthropic
   api_key_env: SUBSCRIPTION_KEY
   deployment: claude-sonnet-4-5   # deployment name in Azure AI Foundry
   max_tokens: 8192
 
 azure_openai:
-  endpoint: https://prediillm2.openai.azure.com/openai/v1
+  endpoint: https://<your-azure-endpoint>/openai/v1
   api_key_env: SUBSCRIPTION_KEY
   deployment: gpt-4o
   max_tokens: 8192
