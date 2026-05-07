@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-Combine per-PDF dataset_manifest_vllm.tsv files into a single global manifest.
+Combine per-PDF dataset_manifest_local.tsv files into a single global manifest.
 
-Each per-PDF manifest has columns: figure_path, csv_path, figure
+Each per-PDF manifest has columns: figure_path, table_path, tsv_path, figure
 Paths may be absolute (from any machine/user). This script makes them relative
 to the base results directory and adds a pdf_id column.
 
-A --threshold filter drops figures that have more than N csv_path rows
+A --threshold filter drops figures that have more than N tsv_path rows
 (i.e. more than N tables mapped to them), keeping only focused figure→table pairs.
 
 Usage:
     python create_global_manifest.py <results_dir> [--output <path>] [--threshold N]
 
 Output:
-    <results_dir>/dataset_manifest_global_vllm.tsv  (default)
+    <results_dir>/dataset_manifest_global.tsv  (default)
 """
 
 import argparse
@@ -57,15 +57,15 @@ def main():
     )
     parser.add_argument(
         "--manifest-name",
-        default="dataset_manifest_vllm.tsv",
-        help="Name of the per-PDF manifest file to look for (default: dataset_manifest_vllm.tsv)",
+        default="dataset_manifest_local.tsv",
+        help="Name of the per-PDF manifest file to look for (default: dataset_manifest_local.tsv)",
     )
     parser.add_argument(
         "--threshold", "-t",
         type=int,
         default=5,
-        help="Max number of csv_path rows per figure to include (default: 5). "
-             "Figures with more than this many mapped CSVs are dropped.",
+        help="Max number of tsv_path rows per figure to include (default: 5). "
+             "Figures with more than this many mapped TSVs are dropped.",
     )
     args = parser.parse_args()
 
@@ -74,7 +74,7 @@ def main():
         print(f"Error: results directory not found: {base}", file=sys.stderr)
         sys.exit(1)
 
-    out_path = args.output or os.path.join(base, "dataset_manifest_global_vllm.tsv")
+    out_path = args.output or os.path.join(base, "dataset_manifest_global.tsv")
 
     manifests = []
     skipped = []
@@ -91,7 +91,7 @@ def main():
         df = pd.read_csv(mf, sep="\t", dtype=str)
 
         # Relativize path columns regardless of which machine generated them
-        for col in ("figure_path", "table_path", "csv_path"):
+        for col in ("figure_path", "table_path", "tsv_path"):
             if col in df.columns:
                 df[col] = df[col].apply(
                     lambda p: relativize(p, name) if isinstance(p, str) else p
@@ -118,7 +118,7 @@ def main():
 
     # Apply threshold: drop figures that have more than --threshold csv rows
     before = len(global_df)
-    csv_counts = global_df.groupby("figure_path")["csv_path"].transform("count")
+    csv_counts = global_df.groupby("figure_path")["tsv_path"].transform("count")
     global_df = global_df[csv_counts <= args.threshold].reset_index(drop=True)
     dropped_rows = before - len(global_df)
     dropped_figs = global_df["figure_path"].nunique()

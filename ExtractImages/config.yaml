@@ -1,0 +1,48 @@
+# Table Extraction Pipeline Configuration
+# Used by extract_tables.py and run_claude_batch.py
+
+# Provider options:
+#   anthropic      — native Anthropic API (set ANTHROPIC_API_KEY)
+#   claude_azure   — Azure AI Foundry: Claude models (set SUBSCRIPTION_KEY)
+#   azure_openai   — Azure AI Foundry: GPT-4o (set SUBSCRIPTION_KEY)
+provider: anthropic
+
+anthropic:
+  model: claude-sonnet-4-5-20251001
+  max_tokens: 8192
+
+claude_azure:
+  endpoint: https://prediillm2.openai.azure.com/anthropic
+  api_key_env: SUBSCRIPTION_KEY
+  deployment: claude-sonnet-4-5   # deployment name in Azure AI Foundry
+  max_tokens: 8192
+
+azure_openai:
+  endpoint: https://prediillm2.openai.azure.com/openai/v1
+  api_key_env: SUBSCRIPTION_KEY
+  deployment: gpt-4o
+  max_tokens: 8192
+
+pipeline:
+  # Directory that contains data-N subdirectories
+  results_dir: ./data/results
+
+  # Which datasets to process — "*" means all data-* dirs found under results_dir
+  datasets: "*"
+
+  # Subdirectory inside each data-N that holds table PNG images
+  tables_subdir: tables
+
+  # TSVs are written to results_dir/<dataset>/<output_subdir>/page_N.tsv
+  # This places them exactly where create_local_manifest.py expects them.
+  output_subdir: table_data
+
+  # Skip images that already have a TSV (set to false to re-run everything)
+  skip_existing: true
+
+  # Seconds to wait between API calls (avoids rate limits)
+  delay_seconds: 0.3
+
+  # Retry up to this many times on rate-limit errors (429)
+  max_retries: 3
+  retry_backoff: 2.0

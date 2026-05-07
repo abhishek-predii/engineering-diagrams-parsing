@@ -5,19 +5,19 @@ Run the full data-creation pipeline for an engineering diagram PDF:
   2. Extract metadata from PDF (Unstructured) -> images_tables_metadata.json
   3. Extract figure/table page numbers and pairing -> figures_tables_pages.json
   4. (optional) Extract page images -> figures/ and tables/ PNGs
-  5. (optional) Run chandra OCR on tables/ -> table_data/ (HTML per table image)
+  5. (optional) Run Claude extraction on tables/ -> table_data/ (flat TSV per table image)
 
 Usage:
   # Full pipeline (requires conda env with unstructured, e.g. conda activate enginuity):
-  python run_pipeline.py <path/to/manual.pdf> [--output-dir <dir>] [--extract-pages] [--run-chandra]
+  python run_pipeline.py <path/to/manual.pdf> [--output-dir <dir>] [--extract-pages] [--run-claude]
 
   # From existing metadata only (no unstructured needed):
-  python run_pipeline.py --from-metadata <path/to/images_tables_metadata.json> [--pdf <path>] [--extract-pages] [--run-chandra]
+  python run_pipeline.py --from-metadata <path/to/images_tables_metadata.json> [--pdf <path>] [--extract-pages] [--run-claude]
 
   # With --extract-pages, PDF pages are rendered to result_dir/figures/ and result_dir/tables/.
-  # With --run-chandra, chandra OCR runs on tables/ and writes HTML to result_dir/table_data/.
-  # Use --chandra-method hf or vllm (default: hf). Requires chandra CLI (e.g. conda activate ocr).
-  # --extract-pages requires pdf2image. Chandra writes table_data/page_N/page_N.html per table image.
+  # With --run-claude, Claude API runs on tables/ and writes flat TSVs to result_dir/table_data/.
+  # --extract-pages requires pdf2image. Requires ANTHROPIC_API_KEY (or configured provider key).
+  # TSV files are written as table_data/page_N.tsv, ready for create_local_manifest.py.
 """
 
 import argparse
@@ -99,15 +99,31 @@ def main():
         help="Extract figure and table pages as PNGs into figures/ and tables/ (requires PDF; use --pdf with --from-metadata)",
     )
     parser.add_argument(
+        "--run-claude",
+        action="store_true",
+        help="Run Claude extraction on tables/ -> table_data/ (flat TSV output). Requires ANTHROPIC_API_KEY.",
+    )
+    parser.add_argument(
+        "--claude-config",
+        default=None,
+        metavar="YAML",
+        help="Path to config.yaml for Claude extraction (default: config.yaml next to this script)",
+    )
+    parser.add_argument(
+        "--run-uoc",
+        action="store_true",
+        help="Run Claude UOC code extraction on the PDF -> table_data/uoc_model_codes.tsv. Requires pdftoppm.",
+    )
+    parser.add_argument(
         "--run-chandra",
         action="store_true",
-        help="Run chandra OCR on tables/ -> table_data/ (HTML output). Requires chandra CLI.",
+        help="[LEGACY] Run chandra OCR on tables/ -> table_data/ (HTML output). Use --run-claude instead.",
     )
     parser.add_argument(
         "--chandra-method",
         choices=("hf", "vllm"),
         default="hf",
-        help="Chandra method (default: hf)",
+        help="[LEGACY] Chandra method (default: hf). Only used with --run-chandra.",
     )
     parser.add_argument(
         "--pdf",
@@ -146,14 +162,38 @@ def main():
                 from page_images import extract_figure_table_images
                 extract_figure_table_images(pdf_path, result_dir)
         if args.run_chandra:
+            print("Warning: --run-chandra is legacy. Use --run-claude instead.", file=sys.stderr)
             tables_dir = os.path.join(result_dir, "tables")
             table_data_dir = os.path.join(result_dir, "table_data")
             if not os.path.isdir(tables_dir):
                 print("Error: tables/ not found. Run with --extract-pages first.", file=sys.stderr)
                 sys.exit(1)
-            print("\nStep: Running chandra OCR on tables/...")
+            print("\nStep: Running chandra OCR on tables/ (legacy)...")
             from page_images import run_chandra_ocr
             run_chandra_ocr(tables_dir, table_data_dir, method=args.chandra_method)
+        if args.run_claude:
+            tables_dir = os.path.join(result_dir, "tables")
+            table_data_dir = os.path.join(result_dir, "table_data")
+            if not os.path.isdir(tables_dir):
+                print("Error: tables/ not found. Run with --extract-pages first.", file=sys.stderr)
+                sys.exit(1)
+            print("\nStep: Running Claude extraction on tables/...")
+            from page_images import run_claude_ocr
+            run_claude_ocr(tables_dir, table_data_dir, config_path=args.claude_config)
+        if args.run_uoc:
+            if not pdf_path or not os.path.isfile(pdf_path):
+                print("Error: --run-uoc requires a valid --pdf path.", file=sys.stderr)
+                sys.exit(1)
+            table_data_dir = os.path.join(result_dir, "table_data")
+            print("\nStep: Running Claude UOC code extraction from PDF...")
+            from extract_uoc_codes import load_config as uoc_load_config, build_client, process_pdf
+            cfg_path = os.path.join(_SCRIPT_DIR, "config.yaml") if not args.claude_config else args.claude_config
+            cfg = uoc_load_config(Path(cfg_path))
+            delay = float(cfg.get("pipeline", {}).get("delay_seconds", 0.3))
+            _, call_fn = build_client(cfg)
+            status = process_pdf(Path(pdf_path), Path(table_data_dir), call_fn,
+                                 skip_existing=True, delay=delay)
+            print(f"  UOC extraction: {status}")
         return
 
     # Mode: full pipeline from PDF
@@ -216,16 +256,38 @@ def main():
             from page_images import extract_figure_table_images
             extract_figure_table_images(pdf_path, result_dir)
 
-    # Step 4 (optional): chandra OCR on tables/
+    # Step 4 (optional): Claude extraction on tables/
     if args.run_chandra:
+        print("Warning: --run-chandra is legacy. Use --run-claude instead.", file=sys.stderr)
         tables_dir = os.path.join(result_dir, "tables")
         table_data_dir = os.path.join(result_dir, "table_data")
         if not os.path.isdir(tables_dir):
             print("Error: tables/ not found. Run with --extract-pages first.", file=sys.stderr)
             sys.exit(1)
-        print("\nStep 4: Running chandra OCR on tables/...")
+        print("\nStep 4: Running chandra OCR on tables/ (legacy)...")
         from page_images import run_chandra_ocr
         run_chandra_ocr(tables_dir, table_data_dir, method=args.chandra_method)
+    if args.run_claude:
+        tables_dir = os.path.join(result_dir, "tables")
+        table_data_dir = os.path.join(result_dir, "table_data")
+        if not os.path.isdir(tables_dir):
+            print("Error: tables/ not found. Run with --extract-pages first.", file=sys.stderr)
+            sys.exit(1)
+        print("\nStep 4: Running Claude extraction on tables/...")
+        from page_images import run_claude_ocr
+        run_claude_ocr(tables_dir, table_data_dir, config_path=args.claude_config)
+
+    if args.run_uoc:
+        table_data_dir = os.path.join(result_dir, "table_data")
+        print("\nStep 4b: Running Claude UOC code extraction from PDF...")
+        from extract_uoc_codes import load_config as uoc_load_config, build_client, process_pdf
+        cfg_path = os.path.join(_SCRIPT_DIR, "config.yaml") if not args.claude_config else args.claude_config
+        cfg = uoc_load_config(Path(cfg_path))
+        delay = float(cfg.get("pipeline", {}).get("delay_seconds", 0.3))
+        _, call_fn = build_client(cfg)
+        status = process_pdf(Path(pdf_path), Path(table_data_dir), call_fn,
+                             skip_existing=True, delay=delay)
+        print(f"  UOC extraction: {status}")
 
     print("\nDone.")
     print(f"  Figures: {len(result['figures'])}")
