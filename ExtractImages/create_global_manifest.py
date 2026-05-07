@@ -6,11 +6,12 @@ Each per-PDF manifest has columns: figure_path, table_path, tsv_path, figure
 Paths may be absolute (from any machine/user). This script makes them relative
 to the base results directory and adds a pdf_id column.
 
-A --threshold filter drops figures that have more than N tsv_path rows
-(i.e. more than N tables mapped to them), keeping only focused figure→table pairs.
+The threshold filter (dropping figures paired with too many TSVs) is applied
+at local manifest creation time (create_local_manifest.py --threshold N).
+This script is a pure merge step.
 
 Usage:
-    python create_global_manifest.py <results_dir> [--output <path>] [--threshold N]
+    python create_global_manifest.py <results_dir> [--output <path>]
 
 Output:
     <results_dir>/dataset_manifest_global.tsv  (default)
@@ -59,13 +60,6 @@ def main():
         "--manifest-name",
         default="dataset_manifest_local.tsv",
         help="Name of the per-PDF manifest file to look for (default: dataset_manifest_local.tsv)",
-    )
-    parser.add_argument(
-        "--threshold", "-t",
-        type=int,
-        default=5,
-        help="Max number of tsv_path rows per figure to include (default: 5). "
-             "Figures with more than this many mapped TSVs are dropped.",
     )
     args = parser.parse_args()
 
@@ -116,19 +110,10 @@ def main():
     cols.insert(fig_idx, "pdf_id")
     global_df = global_df[cols]
 
-    # Apply threshold: drop figures that have more than --threshold csv rows
-    before = len(global_df)
-    csv_counts = global_df.groupby("figure_path")["tsv_path"].transform("count")
-    global_df = global_df[csv_counts <= args.threshold].reset_index(drop=True)
-    dropped_rows = before - len(global_df)
-    dropped_figs = global_df["figure_path"].nunique()
-
     global_df.to_csv(out_path, sep="\t", index=False)
-    print(f"\nThreshold  : csv_count <= {args.threshold}")
-    print(f"  Dropped rows (figures above threshold) : {dropped_rows:,}")
-    print(f"  Unique figures retained : {dropped_figs:,}")
     print(f"\nWrote {out_path}")
     print(f"  Total rows : {len(global_df)}")
+    print(f"  Unique figures : {global_df['figure_path'].nunique():,}")
     print(f"  PDFs included: {global_df['pdf_id'].unique().tolist()}")
 
 

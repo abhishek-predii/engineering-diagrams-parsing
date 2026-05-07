@@ -123,6 +123,13 @@ def main():
         description="Build dataset_manifest_local.tsv from flat TSV files in table_data/"
     )
     parser.add_argument("table_data_dir", help="Path to table_data/ directory")
+    parser.add_argument(
+        "--threshold", "-t",
+        type=int,
+        default=5,
+        help="Max number of TSV rows per figure to include (default: 5). "
+             "Figures paired with more than this many TSV files are dropped.",
+    )
     args = parser.parse_args()
 
     table_data_dir = os.path.abspath(args.table_data_dir)
@@ -162,14 +169,25 @@ def main():
 
     pairing = data.get("pairing", {})
 
-    # Step 5: build and write manifest
+    # Step 5: build manifest rows
     rows = build_manifest_rows(pairing, existing_table_pages)
     if not rows:
         print("No manifest rows (no valid figure-table pairs found).", file=sys.stderr)
         sys.exit(1)
 
-    manifest_path = os.path.join(result_dir, "dataset_manifest_local.tsv")
     manifest_df = pd.DataFrame(rows)
+
+    # Step 6: threshold filter — drop figures paired with more than N TSV files
+    before = len(manifest_df)
+    tsv_counts = manifest_df.groupby("figure_path")["tsv_path"].transform("count")
+    manifest_df = manifest_df[tsv_counts <= args.threshold].reset_index(drop=True)
+    dropped = before - len(manifest_df)
+    if dropped:
+        print(f"\nThreshold filter (threshold={args.threshold}): dropped {dropped} rows "
+              f"({manifest_df['figure_path'].nunique()} figures retained, "
+              f"{before - len(manifest_df)} rows removed)")
+
+    manifest_path = os.path.join(result_dir, "dataset_manifest_local.tsv")
     manifest_df.to_csv(manifest_path, index=False, sep=CSV_SEP, encoding="utf-8")
     print(f"\nManifest -> {manifest_path} ({len(manifest_df)} rows)")
     print(f"Unique figures: {manifest_df['figure'].nunique()}")

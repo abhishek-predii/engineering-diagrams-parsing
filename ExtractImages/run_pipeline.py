@@ -110,11 +110,6 @@ def main():
         help="Path to config.yaml for Claude extraction (default: config.yaml next to this script)",
     )
     parser.add_argument(
-        "--run-uoc",
-        action="store_true",
-        help="Run Claude UOC code extraction on the PDF -> table_data/uoc_model_codes.tsv. Requires pdftoppm.",
-    )
-    parser.add_argument(
         "--run-chandra",
         action="store_true",
         help="[LEGACY] Run chandra OCR on tables/ -> table_data/ (HTML output). Use --run-claude instead.",
@@ -180,20 +175,6 @@ def main():
             print("\nStep: Running Claude extraction on tables/...")
             from page_images import run_claude_ocr
             run_claude_ocr(tables_dir, table_data_dir, config_path=args.claude_config)
-        if args.run_uoc:
-            if not pdf_path or not os.path.isfile(pdf_path):
-                print("Error: --run-uoc requires a valid --pdf path.", file=sys.stderr)
-                sys.exit(1)
-            table_data_dir = os.path.join(result_dir, "table_data")
-            print("\nStep: Running Claude UOC code extraction from PDF...")
-            from extract_uoc_codes import load_config as uoc_load_config, build_client, process_pdf
-            cfg_path = os.path.join(_SCRIPT_DIR, "config.yaml") if not args.claude_config else args.claude_config
-            cfg = uoc_load_config(Path(cfg_path))
-            delay = float(cfg.get("pipeline", {}).get("delay_seconds", 0.3))
-            _, call_fn = build_client(cfg)
-            status = process_pdf(Path(pdf_path), Path(table_data_dir), call_fn,
-                                 skip_existing=True, delay=delay)
-            print(f"  UOC extraction: {status}")
         return
 
     # Mode: full pipeline from PDF
@@ -276,18 +257,6 @@ def main():
         print("\nStep 4: Running Claude extraction on tables/...")
         from page_images import run_claude_ocr
         run_claude_ocr(tables_dir, table_data_dir, config_path=args.claude_config)
-
-    if args.run_uoc:
-        table_data_dir = os.path.join(result_dir, "table_data")
-        print("\nStep 4b: Running Claude UOC code extraction from PDF...")
-        from extract_uoc_codes import load_config as uoc_load_config, build_client, process_pdf
-        cfg_path = os.path.join(_SCRIPT_DIR, "config.yaml") if not args.claude_config else args.claude_config
-        cfg = uoc_load_config(Path(cfg_path))
-        delay = float(cfg.get("pipeline", {}).get("delay_seconds", 0.3))
-        _, call_fn = build_client(cfg)
-        status = process_pdf(Path(pdf_path), Path(table_data_dir), call_fn,
-                             skip_existing=True, delay=delay)
-        print(f"  UOC extraction: {status}")
 
     print("\nDone.")
     print(f"  Figures: {len(result['figures'])}")
