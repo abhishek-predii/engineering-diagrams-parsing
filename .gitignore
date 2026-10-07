@@ -24,3 +24,16 @@ ExtractImages/data/pdfs/**/*
 **/table_data/
 **/table_data_vllm/
 
+
+# ── enginuity-2 additions ──
+# Root-level source PDFs (1.1 GB binary data — fetched separately, not versioned)
+/pdfs/
+# Run logs
+*.log
+# Local working notes / reference docs (not pipeline code)
+/CONTEXT.md
+/Engineering_Working_Drawing_Basics.pdf
+# One-off batch runner with hardcoded local paths
+ExtractImages/run_new_8.sh
+# QA tool with external dependency on isha enginuity_source_data (local only)
+ExtractImages/verify_and_reextract.py

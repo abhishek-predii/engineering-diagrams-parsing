@@ -82,6 +82,9 @@ def main():
             skipped.append(name)
             continue
 
+        if os.path.getsize(mf) == 0:
+            skipped.append(name + " (empty sentinel)")
+            continue
         df = pd.read_csv(mf, sep="\t", dtype=str)
 
         # Relativize path columns regardless of which machine generated them
